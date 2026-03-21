@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jesprit</title>
+    <meta
+      name="description"
+      content="Jesprit is a minimalist, privacy-first journaling app that stores everything locally."
+    />
+    <meta name="theme-color" content="#f7f2ea" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Jesprit" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="64x64" href="icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <script>
+      (function applyStoredTheme() {
+        const savedTheme = localStorage.getItem("jesprit-theme");
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
+
+        if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              canvas: {
+                50: "#f6f3ee",
+                100: "#ece6de",
+                900: "#171716",
+                950: "#111111",
+              },
+            },
+            fontFamily: {
+              sans: ["Manrope", "ui-sans-serif", "system-ui", "sans-serif"],
+              serif: ["Cormorant Garamond", "Georgia", "serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body
+    class="min-h-screen bg-stone-100 text-stone-900 transition-colors duration-300 dark:bg-canvas-950 dark:text-stone-100"
+  >
+    <div class="grain fixed inset-0 -z-10"></div>
+    <div
+      id="appShell"
+      class="mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 py-4 transition-all duration-500 sm:px-6 lg:px-8"
+    >
+      <header
+        id="topBar"
+        class="panel topbar-compact flex items-center justify-between gap-4 rounded-[26px] px-4 py-4 sm:px-5"
+      >
+        <div class="flex min-w-0 items-center gap-3">
+          <div>
+            <h1
+              class="font-serif text-3xl font-semibold leading-none tracking-tight text-stone-900 dark:text-white sm:text-[2.35rem]"
+            >
+              Jesprit
+            </h1>
+          </div>
+        </div>
+
+        <div
+          class="topbar-controls flex flex-1 flex-wrap items-center justify-end gap-3"
+        >
+          <label
+            class="relative min-w-[160px] flex-1 sm:min-w-[220px] lg:max-w-sm"
+          >
+            <span
+              class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-stone-400 dark:text-stone-500"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              >
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.5-3.5"></path>
+              </svg>
+            </span>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Search title or content"
+              class="w-full rounded-2xl border border-stone-200 bg-white py-3 pl-11 pr-4 text-sm text-stone-800 outline-none transition placeholder:text-stone-400 focus:border-stone-400 focus:ring-2 focus:ring-stone-200 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-stone-600 dark:focus:ring-stone-800"
+            />
+          </label>
+
+          <button
+            id="themeToggle"
+            type="button"
+            class="desktop-topbar-action hidden h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-300 hover:text-stone-950 md:inline-flex dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-stone-700 dark:hover:text-white"
+          >
+            <span id="themeIcon" aria-hidden="true"></span>
+            <span id="themeLabel">Dark mode</span>
+          </button>
+
+          <button
+            id="exportPdfBtn"
+            type="button"
+            class="desktop-topbar-action hidden h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-300 hover:text-stone-950 md:inline-flex dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-stone-700 dark:hover:text-white"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            >
+              <path
+                d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+              ></path>
+              <path d="M14 3v5h5"></path>
+              <path d="M8.5 15h7"></path>
+            </svg>
+            Export as PDF
+          </button>
+
+          <button
+            id="mobileMenuToggle"
+            type="button"
+            class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-200 bg-white text-stone-700 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-300 hover:text-stone-900 md:hidden dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-stone-700 dark:hover:text-white"
+            aria-label="Open mobile menu"
+            aria-expanded="false"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            >
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div
+        id="mobileMenu"
+        class="panel mobile-menu pointer-events-none mt-3 rounded-[26px] p-3 opacity-0 transition duration-200 md:hidden"
+        aria-hidden="true"
+      >
+        <div class="grid gap-2.5">
+          <button
+            id="mobileEntriesBtn"
+            type="button"
+            class="inline-flex h-11 items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
+          >
+            <span>Entries</span>
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+          <button
+            id="mobileThemeToggle"
+            type="button"
+            class="inline-flex h-11 items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
+          >
+            <span id="mobileThemeLabel">Dark mode</span>
+            <span id="mobileThemeIcon" aria-hidden="true"></span>
+          </button>
+          <button
+            id="mobileExportPdfBtn"
+            type="button"
+            class="inline-flex h-11 items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
+          >
+            <span>Export as PDF</span>
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            >
+              <path
+                d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+              ></path>
+              <path d="M14 3v5h5"></path>
+              <path d="M8.5 15h7"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div
+        id="workspace"
+        class="mt-3 flex min-h-0 flex-1 gap-4 transition-all duration-500 lg:mt-4"
+      >
+        <div
+          id="sidebarBackdrop"
+          class="fixed inset-0 z-30 hidden bg-stone-950/25 backdrop-blur-sm lg:hidden"
+          aria-hidden="true"
+        ></div>
+
+        <aside
+          id="sidebar"
+          class="panel fixed inset-y-4 left-4 z-40 flex w-[calc(100vw-2rem)] max-w-sm -translate-x-[115%] flex-col rounded-[32px] p-4 transition duration-300 lg:static lg:inset-auto lg:w-[380px] lg:max-w-none lg:translate-x-0"
+        >
+          <div
+            class="flex items-center justify-between gap-3 border-b border-stone-200/80 pb-5 dark:border-stone-800/80"
+          >
+            <div>
+              <p
+                class="text-xs uppercase tracking-[0.24em] text-stone-500 dark:text-stone-400"
+              >
+                Entries
+              </p>
+              <p
+                id="entryCount"
+                class="mt-1 text-sm text-stone-600 dark:text-stone-400"
+              >
+                0 notes
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                id="newEntryBtn"
+                type="button"
+                class="inline-flex h-10 items-center gap-2 rounded-2xl bg-stone-900 px-4 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                New
+              </button>
+              <button
+                id="closeSidebarBtn"
+                type="button"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stone-200 bg-white text-stone-600 transition hover:border-stone-300 hover:text-stone-900 lg:hidden dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:text-white"
+                aria-label="Close entries sidebar"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                >
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="entriesList"
+            class="mt-5 flex-1 space-y-3.5 overflow-y-auto pr-1"
+          ></div>
+        </aside>
+
+        <main
+          class="panel flex min-w-0 flex-1 flex-col rounded-[32px] p-5 sm:p-6 lg:p-8"
+        >
+          <div
+            class="flex flex-col gap-5 border-b border-stone-200/80 pb-6 dark:border-stone-800/80"
+          >
+            <div>
+              <p
+                class="text-xs uppercase tracking-[0.28em] text-stone-500 dark:text-stone-400"
+              >
+                Writing space
+              </p>
+              <p
+                id="editorMeta"
+                class="mt-2 text-[15px] leading-7 text-stone-600 dark:text-stone-400"
+              >
+                No entries yet. Start writing your first thought.
+              </p>
+            </div>
+            <div
+              class="editor-toolbar flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"
+            >
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  id="mobileQuickNewBtn"
+                  type="button"
+                  class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-stone-900 px-4 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-stone-800 md:hidden dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-white"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  New
+                </button>
+                <span
+                  id="saveStatus"
+                  class="rounded-full bg-stone-200/70 px-3 py-1 text-xs font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+                >
+                  Ready
+                </span>
+                <button
+                  id="focusToggle"
+                  type="button"
+                  class="inline-flex h-11 items-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-300 hover:text-stone-950 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-stone-700 dark:hover:text-white"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+                    <path d="M16 3h3a2 2 0 0 1 2 2v3"></path>
+                    <path d="M21 16v3a2 2 0 0 1-2 2h-3"></path>
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  </svg>
+                  <span id="focusToggleLabel">Focus mode</span>
+                </button>
+                <button
+                  id="deleteBtn"
+                  type="button"
+                  class="inline-flex h-11 items-center gap-2 rounded-2xl border border-transparent bg-stone-200/70 px-4 text-sm font-medium text-stone-600 transition hover:bg-stone-300/70 disabled:pointer-events-none disabled:opacity-50 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+                  disabled
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  >
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="m19 6-1 14H6L5 6"></path>
+                  </svg>
+                  Delete
+                </button>
+              </div>
+              <div
+                id="editToolbar"
+                class="bottom-toolbar inline-flex items-center gap-1.5 rounded-[22px] border border-stone-200/80 bg-white/78 px-2 py-2 dark:border-stone-800/80 dark:bg-stone-900/72"
+              >
+                <div
+                  id="fontWeightWheel"
+                  class="wheel-control toolbar-desktop inline-flex min-w-[118px] items-center justify-between gap-2 rounded-[18px] bg-stone-100/80 px-3 py-2.5 text-[13px] font-medium text-stone-700 dark:bg-stone-950/70 dark:text-stone-200"
+                  title="Hover and scroll to toggle bold for selected text"
+                >
+                  <span
+                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400"
+                    >Weight</span
+                  >
+                  <span id="fontWeightValue" class="toolbar-value"
+                    >Regular</span
+                  >
+                </div>
+
+                <div
+                  id="fontStyleWheel"
+                  class="wheel-control toolbar-desktop inline-flex min-w-[112px] items-center justify-between gap-2 rounded-[18px] bg-stone-100/80 px-3 py-2.5 text-[13px] font-medium text-stone-700 dark:bg-stone-950/70 dark:text-stone-200"
+                  title="Hover and scroll to toggle italic for selected text"
+                >
+                  <span
+                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400"
+                    >Style</span
+                  >
+                  <span id="fontStyleValue" class="toolbar-value">Roman</span>
+                </div>
+
+                <div
+                  id="fontFamilyWheel"
+                  class="wheel-control toolbar-desktop inline-flex min-w-[112px] items-center justify-between gap-2 rounded-[18px] bg-stone-100/80 px-3 py-2.5 text-[13px] font-medium text-stone-700 dark:bg-stone-950/70 dark:text-stone-200"
+                  title="Hover and scroll to change font family for selected text"
+                >
+                  <span
+                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400"
+                    >Font</span
+                  >
+                  <span id="fontFamilyValue" class="toolbar-value">Serif</span>
+                </div>
+
+                <div
+                  id="fontSizeWheel"
+                  class="wheel-control toolbar-desktop inline-flex min-w-[102px] items-center justify-between gap-2 rounded-[18px] bg-stone-100/80 px-3 py-2.5 text-[13px] font-medium text-stone-700 dark:bg-stone-950/70 dark:text-stone-200"
+                  title="Hover and scroll to change font size for selected text"
+                >
+                  <span
+                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400"
+                    >Size</span
+                  >
+                  <span id="fontSizeValue" class="toolbar-value">19px</span>
+                </div>
+
+                <div class="toolbar-mobile hidden items-center gap-2">
+                  <label class="toolbar-mobile-field">
+                    <span>Weight</span>
+                    <select
+                      id="mobileFontWeightSelect"
+                      class="toolbar-mobile-select"
+                    >
+                      <option value="regular">Regular</option>
+                      <option value="bold">Bold</option>
+                    </select>
+                  </label>
+
+                  <label class="toolbar-mobile-field">
+                    <span>Style</span>
+                    <select
+                      id="mobileFontStyleSelect"
+                      class="toolbar-mobile-select"
+                    >
+                      <option value="roman">Roman</option>
+                      <option value="italic">Italic</option>
+                    </select>
+                  </label>
+
+                  <label class="toolbar-mobile-field">
+                    <span>Font</span>
+                    <select
+                      id="mobileFontFamilySelect"
+                      class="toolbar-mobile-select"
+                    >
+                      <option value="serif">Serif</option>
+                      <option value="sans">Sans</option>
+                      <option value="mono">Mono</option>
+                    </select>
+                  </label>
+
+                  <div class="toolbar-mobile-field toolbar-mobile-size">
+                    <span>Size</span>
+                    <div class="toolbar-mobile-stepper">
+                      <button
+                        id="mobileFontSizeDown"
+                        type="button"
+                        class="toolbar-mobile-stepper-btn"
+                        aria-label="Decrease font size"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          class="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                        >
+                          <path d="M12 5v14"></path>
+                          <path d="m19 12-7 7-7-7"></path>
+                        </svg>
+                      </button>
+                      <span
+                        id="mobileFontSizeValue"
+                        class="toolbar-mobile-size-value"
+                        >19px</span
+                      >
+                      <button
+                        id="mobileFontSizeUp"
+                        type="button"
+                        class="toolbar-mobile-stepper-btn"
+                        aria-label="Increase font size"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          class="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                        >
+                          <path d="M12 19V5"></path>
+                          <path d="m5 12 7-7 7 7"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            id="emptyState"
+            class="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center"
+          >
+            <div class="max-w-md">
+              <div
+                class="mx-auto flex h-16 w-16 items-center justify-center rounded-[24px] bg-stone-900 text-white shadow-lg shadow-stone-900/10 dark:bg-stone-100 dark:text-stone-950"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-7 w-7"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M8 3h8l5 5v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+                  ></path>
+                  <path d="M14 3v6h6"></path>
+                  <path d="M9 13h6M9 17h6"></path>
+                </svg>
+              </div>
+              <h2
+                class="mt-6 text-2xl font-semibold tracking-tight text-stone-900 dark:text-white"
+              >
+                No entries yet. Start writing your first thought.
+              </h2>
+              <p
+                class="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-400"
+              >
+                Jesprit keeps everything local to your browser, with no account,
+                no sync, and no distractions.
+              </p>
+              <button
+                id="emptyStateNewBtn"
+                type="button"
+                class="mt-6 inline-flex h-12 items-center gap-2 rounded-2xl bg-stone-900 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Create your first entry
+              </button>
+            </div>
+          </div>
+
+          <section id="editorSection" class="hidden flex-1">
+            <div
+              class="editor-shell mx-auto flex h-full w-full max-w-4xl flex-col rounded-[30px] px-1 py-6 sm:px-3 lg:px-5"
+            >
+              <input
+                id="titleInput"
+                type="text"
+                placeholder="Untitled entry"
+                class="border-none bg-transparent px-0 font-serif text-5xl font-semibold tracking-tight text-stone-900 outline-none placeholder:text-stone-300 dark:text-white dark:placeholder:text-stone-600 sm:text-6xl"
+              />
+              <div
+                id="contentInput"
+                contenteditable="true"
+                data-placeholder="Start writing..."
+                class="journal-area mt-7 min-h-[420px] flex-1 bg-transparent px-0 text-stone-700 outline-none dark:text-stone-200"
+              ></div>
+
+              <div
+                class="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-stone-200/80 pt-5 text-sm text-stone-500 dark:border-stone-800/80 dark:text-stone-400"
+              >
+                <span id="wordCount">0 words</span>
+                <span id="charCount">0 characters</span>
+                <span>Local only</span>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div
+      id="deleteModal"
+      class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-stone-950/35 px-4 opacity-0 transition duration-200 dark:bg-black/55"
+      aria-hidden="true"
+    >
+      <div class="panel w-full max-w-md rounded-[30px] p-6 sm:p-7">
+        <div class="flex items-start gap-4">
+          <div
+            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-950"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            >
+              <path d="M3 6h18"></path>
+              <path d="M8 6V4h8v2"></path>
+              <path d="m19 6-1 14H6L5 6"></path>
+            </svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p
+              class="text-[11px] font-medium uppercase tracking-[0.28em] text-stone-500 dark:text-stone-400"
+            >
+              Delete entry
+            </p>
+            <h2
+              class="mt-2 text-2xl font-semibold tracking-tight text-stone-900 dark:text-white"
+            >
+              Remove this note?
+            </h2>
+            <p
+              id="deleteModalMessage"
+              class="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-400"
+            >
+              This action will permanently delete the selected entry from this
+              device.
+            </p>
+          </div>
+        </div>
+
+        <div
+          class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+        >
+          <button
+            id="deleteCancelBtn"
+            type="button"
+            class="inline-flex h-11 items-center justify-center rounded-2xl border border-stone-200 bg-white px-5 text-sm font-medium text-stone-700 transition hover:border-stone-300 hover:text-stone-950 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:border-stone-700 dark:hover:text-white"
+          >
+            Cancel
+          </button>
+          <button
+            id="deleteConfirmBtn"
+            type="button"
+            class="inline-flex h-11 items-center justify-center rounded-2xl bg-stone-900 px-5 text-sm font-medium text-white transition hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-950 dark:hover:bg-white"
+          >
+            Delete entry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button
+      id="focusExitBtn"
+      type="button"
+      class="pointer-events-none fixed right-5 top-5 z-[60] inline-flex h-11 w-11 translate-y-2 items-center justify-center rounded-full border border-stone-200 bg-white/92 text-stone-700 opacity-0 shadow-lg shadow-stone-900/5 backdrop-blur-xl transition duration-300 hover:-translate-y-0.5 hover:border-stone-300 hover:text-stone-950 dark:border-stone-800 dark:bg-stone-900/92 dark:text-stone-200 dark:hover:border-stone-700 dark:hover:text-white"
+      aria-label="Exit focus mode"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="M6 6l12 12"></path>
+        <path d="M18 6 6 18"></path>
+      </svg>
+    </button>
+
+    <script src="app.js"></script>
+  </body>
+</html>
