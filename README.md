@@ -47,28 +47,6 @@ Jesprit/
 └── README.md
 ```
 
-## Running The App
-
-### Basic local use
-
-You can open `index.html` directly in the browser for the main journaling experience.
-
-### PWA install and offline support
-
-To use installable PWA behavior and service worker caching, serve the project through a local server instead of opening it with `file://`.
-
-Examples:
-
-```bash
-python3 -m http.server 8000
-```
-
-Then open:
-
-```text
-http://localhost:8000
-```
-
 ## How It Works
 
 - Entries are stored locally in the browser using `localStorage`
@@ -85,7 +63,3 @@ Jesprit does not use accounts, servers, or remote databases. Your journal stays 
 - Clearing browser storage will remove saved entries
 - PWA installation depends on browser support
 - PDF export behavior can vary slightly by browser
-
-## License
-
-This project is currently for personal/project use unless you add a separate license.
