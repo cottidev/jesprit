@@ -39,6 +39,7 @@ const elements = {
   editorMeta: document.getElementById("editorMeta"),
   saveStatus: document.getElementById("saveStatus"),
   deleteBtn: document.getElementById("deleteBtn"),
+  exportEntryJsonBtn: document.getElementById("exportEntryJsonBtn"),
   focusToggle: document.getElementById("focusToggle"),
   focusToggleLabel: document.getElementById("focusToggleLabel"),
   focusExitBtn: document.getElementById("focusExitBtn"),
@@ -131,6 +132,7 @@ function bindEvents() {
   elements.mobileQuickNewBtn.addEventListener("click", createEntry);
   elements.emptyStateNewBtn.addEventListener("click", createEntry);
   elements.deleteBtn.addEventListener("click", deleteActiveEntry);
+  elements.exportEntryJsonBtn.addEventListener("click", exportActiveEntryAsJson);
   elements.searchInput.addEventListener("input", handleSearch);
   elements.titleInput.addEventListener("input", handleEditorInput);
   elements.contentInput.addEventListener(
@@ -536,6 +538,7 @@ function renderEditor(syncInputs = true) {
     elements.editorSection.classList.add("hidden");
     elements.editToolbar.classList.add("hidden");
     elements.deleteBtn.disabled = true;
+    elements.exportEntryJsonBtn.disabled = true;
     elements.editorMeta.textContent =
       "No entries yet. Start writing your first thought.";
     elements.wordCount.textContent = "0 words";
@@ -548,6 +551,7 @@ function renderEditor(syncInputs = true) {
   elements.editorSection.classList.remove("hidden");
   elements.editToolbar.classList.remove("hidden");
   elements.deleteBtn.disabled = false;
+  elements.exportEntryJsonBtn.disabled = false;
 
   if (syncInputs) {
     elements.titleInput.value = activeEntry.title;
@@ -663,20 +667,29 @@ function exportAsJson() {
     date: entry.date,
   }));
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
   const stamp = formatFilenameDate(new Date());
-
-  link.href = url;
-  link.download = `jesprit-backup-${stamp}.json`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadJsonFile(payload, `jesprit-backup-${stamp}.json`);
   setStatus("JSON export ready");
+}
+
+function exportActiveEntryAsJson() {
+  const activeEntry = getActiveEntry();
+  if (!activeEntry) {
+    setStatus("Open an entry to export");
+    return;
+  }
+
+  const payload = {
+    id: activeEntry.id,
+    title: activeEntry.title,
+    content: activeEntry.content,
+    date: activeEntry.date,
+  };
+  const stamp = formatFilenameDate(new Date(activeEntry.date));
+  const filename = `${slugifyFilename(getDisplayTitle(activeEntry))}-${stamp}.json`;
+
+  downloadJsonFile(payload, filename);
+  setStatus("Entry JSON ready");
 }
 
 function handleMobileFontWeightChange(event) {
@@ -1090,6 +1103,30 @@ function formatFilenameDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function slugifyFilename(value) {
+  const slug = String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "untitled-entry";
+}
+
+function downloadJsonFile(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function countWords(text) {
   const trimmed = text.trim();
   return trimmed ? trimmed.split(/\s+/).length : 0;
@@ -1290,7 +1327,21 @@ function extractEntriesFromImport(parsed) {
   if (parsed && typeof parsed === "object" && Array.isArray(parsed.entries)) {
     return parsed.entries;
   }
+  if (isImportedEntryObject(parsed)) {
+    return [parsed];
+  }
   return [];
+}
+
+function isImportedEntryObject(value) {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.content === "string" &&
+    Number.isFinite(Number(value.date))
+  );
 }
 
 function makeImportedEntriesUnique(entries) {
