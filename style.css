@@ -753,19 +753,22 @@ html.dark .entry-group-label {
     padding-right: 0.65rem;
   }
 
-  #mobileQuickNewBtn,
-  #focusToggle,
-  #deleteBtn {
-    font-size: 0.78rem;
-  }
+#mobileQuickNewBtn,
+#focusToggle,
+#exportEntryJsonBtn,
+#deleteBtn {
+  font-size: 0.78rem;
+}
 
   #mobileQuickNewBtn,
   #focusToggle,
+#exportEntryJsonBtn,
   #deleteBtn {
     gap: 0.35rem;
   }
 
   #focusToggle svg,
+  #exportEntryJsonBtn svg,
   #deleteBtn svg,
   #mobileQuickNewBtn svg {
     flex-shrink: 0;
