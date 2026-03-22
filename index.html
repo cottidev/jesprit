@@ -192,6 +192,25 @@
             <span id="mobileThemeIcon" aria-hidden="true"></span>
           </button>
           <button
+            id="mobileImportBtn"
+            type="button"
+            class="inline-flex h-11 items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
+          >
+            <span>Import entries</span>
+            <svg
+              viewBox="0 0 24 24"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </button>
+          <button
             id="mobileExportPdfBtn"
             type="button"
             class="inline-flex h-11 items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
@@ -263,6 +282,33 @@
                 </svg>
                 New
               </button>
+              <button
+                id="importBtn"
+                type="button"
+                title="Import entries from a file (.txt, .md, .pdf, or .json backup)"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-stone-200 bg-white text-stone-600 transition hover:-translate-y-0.5 hover:border-stone-300 hover:text-stone-900 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-stone-700 dark:hover:text-white"
+                aria-label="Import entries"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </button>
+              <input
+                id="importFileInput"
+                type="file"
+                accept=".txt,.md,.json,.pdf"
+                class="hidden"
+                aria-hidden="true"
+              />
               <button
                 id="closeSidebarBtn"
                 type="button"
@@ -594,6 +640,7 @@
               >
                 <span id="wordCount">0 words</span>
                 <span id="charCount">0 characters</span>
+                <span id="readingTime">~0 min read</span>
                 <span>Local only</span>
               </div>
             </div>
