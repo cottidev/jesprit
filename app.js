@@ -28,7 +28,9 @@ const elements = {
   mobileThemeLabel: document.getElementById("mobileThemeLabel"),
   mobileThemeIcon: document.getElementById("mobileThemeIcon"),
   exportPdfBtn: document.getElementById("exportPdfBtn"),
+  exportJsonBtn: document.getElementById("exportJsonBtn"),
   mobileExportPdfBtn: document.getElementById("mobileExportPdfBtn"),
+  mobileExportJsonBtn: document.getElementById("mobileExportJsonBtn"),
   newEntryBtn: document.getElementById("newEntryBtn"),
   mobileQuickNewBtn: document.getElementById("mobileQuickNewBtn"),
   emptyStateNewBtn: document.getElementById("emptyStateNewBtn"),
@@ -149,9 +151,14 @@ function bindEvents() {
     closeMobileMenu();
   });
   elements.exportPdfBtn.addEventListener("click", exportAsPdf);
+  elements.exportJsonBtn.addEventListener("click", exportAsJson);
   elements.mobileExportPdfBtn.addEventListener("click", () => {
     closeMobileMenu();
     exportAsPdf();
+  });
+  elements.mobileExportJsonBtn.addEventListener("click", () => {
+    closeMobileMenu();
+    exportAsJson();
   });
   elements.mobileMenuToggle.addEventListener("click", toggleMobileMenu);
   elements.mobileEntriesBtn.addEventListener("click", () => {
@@ -643,6 +650,35 @@ function exportAsPdf() {
   document.body.appendChild(iframe);
 }
 
+function exportAsJson() {
+  if (!state.entries.length) {
+    setStatus("No entries to export");
+    return;
+  }
+
+  const payload = state.entries.map((entry) => ({
+    id: entry.id,
+    title: entry.title,
+    content: entry.content,
+    date: entry.date,
+  }));
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const stamp = formatFilenameDate(new Date());
+
+  link.href = url;
+  link.download = `jesprit-backup-${stamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  setStatus("JSON export ready");
+}
+
 function handleMobileFontWeightChange(event) {
   state.preferences.fontWeight =
     event.target.value === "bold" ? "bold" : "regular";
@@ -1112,7 +1148,7 @@ function handleImportFile(event) {
   // Reset so the same file can be re-selected
   elements.importFileInput.value = "";
 
-  if (file.name.endsWith(".pdf") || file.type === "application/pdf") {
+  if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
     importFromPdf(file);
     return;
   }
@@ -1125,7 +1161,7 @@ function handleImportFile(event) {
       return;
     }
 
-    if (file.name.endsWith(".json")) {
+    if (file.name.toLowerCase().endsWith(".json")) {
       importFromJson(text);
     } else {
       importFromText(text, file.name);
@@ -1162,7 +1198,25 @@ function importFromPdf(file) {
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          const pageText = content.items.map((item) => item.str).join(" ");
+          const items = content.items;
+          let pageText = "";
+          let lastY = null;
+          for (const item of items) {
+            if (!item.str) continue;
+            const y = item.transform ? item.transform[5] : null;
+            if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) {
+              pageText += "\n";
+            } else if (
+              pageText &&
+              !pageText.endsWith("\n") &&
+              !pageText.endsWith(" ") &&
+              !item.str.startsWith(" ")
+            ) {
+              pageText += " ";
+            }
+            pageText += item.str;
+            if (y !== null) lastY = y;
+          }
           fullText += pageText + "\n\n";
         }
 
@@ -1213,28 +1267,52 @@ function importFromJson(text) {
     return;
   }
 
-  const incoming = normalizeEntries(Array.isArray(parsed) ? parsed : []);
+  const rawEntries = extractEntriesFromImport(parsed);
+  const incoming = normalizeEntries(rawEntries);
   if (!incoming.length) {
     setStatus("No valid entries found in file");
     return;
   }
 
-  const existingIds = new Set(state.entries.map((e) => e.id));
-  const fresh = incoming.filter((e) => !existingIds.has(e.id));
-
-  if (!fresh.length) {
-    setStatus("All entries already exist");
-    return;
-  }
-
-  state.entries.push(...fresh);
+  const importedEntries = makeImportedEntriesUnique(incoming);
+  state.entries.push(...importedEntries);
   sortEntries();
-  state.activeEntryId = fresh[0].id;
+  state.activeEntryId = importedEntries[0].id;
   saveEntries();
   setStatus(
-    `Imported ${fresh.length} ${fresh.length === 1 ? "entry" : "entries"}`,
+    `Imported ${importedEntries.length} ${importedEntries.length === 1 ? "entry" : "entries"}`,
   );
   refreshUI();
+}
+
+function extractEntriesFromImport(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object" && Array.isArray(parsed.entries)) {
+    return parsed.entries;
+  }
+  return [];
+}
+
+function makeImportedEntriesUnique(entries) {
+  const usedIds = new Set(state.entries.map((entry) => entry.id));
+
+  return entries.map((entry) => {
+    let id = entry.id;
+
+    while (usedIds.has(id)) {
+      id = `${entry.id}-${createImportSuffix()}`;
+    }
+
+    usedIds.add(id);
+    return {
+      ...entry,
+      id,
+    };
+  });
+}
+
+function createImportSuffix() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function importFromText(text, filename) {
