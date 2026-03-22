@@ -65,6 +65,10 @@ const elements = {
   contentInput: document.getElementById("contentInput"),
   wordCount: document.getElementById("wordCount"),
   charCount: document.getElementById("charCount"),
+  readingTime: document.getElementById("readingTime"),
+  importBtn: document.getElementById("importBtn"),
+  mobileImportBtn: document.getElementById("mobileImportBtn"),
+  importFileInput: document.getElementById("importFileInput"),
 };
 
 const state = {
@@ -113,15 +117,29 @@ function registerServiceWorker() {
 }
 
 function bindEvents() {
+  elements.importBtn.addEventListener("click", () =>
+    elements.importFileInput.click(),
+  );
+  elements.mobileImportBtn.addEventListener("click", () => {
+    closeMobileMenu();
+    elements.importFileInput.click();
+  });
+  elements.importFileInput.addEventListener("change", handleImportFile);
   elements.newEntryBtn.addEventListener("click", createEntry);
   elements.mobileQuickNewBtn.addEventListener("click", createEntry);
   elements.emptyStateNewBtn.addEventListener("click", createEntry);
   elements.deleteBtn.addEventListener("click", deleteActiveEntry);
   elements.searchInput.addEventListener("input", handleSearch);
   elements.titleInput.addEventListener("input", handleEditorInput);
-  elements.contentInput.addEventListener("beforeinput", handleEditorBeforeInput);
+  elements.contentInput.addEventListener(
+    "beforeinput",
+    handleEditorBeforeInput,
+  );
   elements.contentInput.addEventListener("input", handleEditorInput);
-  elements.contentInput.addEventListener("mouseup", saveSelectionIfInsideEditor);
+  elements.contentInput.addEventListener(
+    "mouseup",
+    saveSelectionIfInsideEditor,
+  );
   elements.contentInput.addEventListener("keyup", saveSelectionIfInsideEditor);
   elements.contentInput.addEventListener("focus", saveSelectionIfInsideEditor);
   document.addEventListener("selectionchange", saveSelectionIfInsideEditor);
@@ -146,14 +164,33 @@ function bindEvents() {
   elements.deleteConfirmBtn.addEventListener("click", confirmDeleteEntry);
   elements.focusToggle.addEventListener("click", toggleFocusMode);
   elements.focusExitBtn.addEventListener("click", () => setFocusMode(false));
-  elements.fontWeightWheel.addEventListener("wheel", handleFontWeightWheel, { passive: false });
-  elements.fontStyleWheel.addEventListener("wheel", handleFontStyleWheel, { passive: false });
-  elements.fontFamilyWheel.addEventListener("wheel", handleFontFamilyWheel, { passive: false });
-  elements.fontSizeWheel.addEventListener("wheel", handleFontSizeWheel, { passive: false });
-  elements.mobileFontWeightSelect.addEventListener("change", handleMobileFontWeightChange);
-  elements.mobileFontStyleSelect.addEventListener("change", handleMobileFontStyleChange);
-  elements.mobileFontFamilySelect.addEventListener("change", handleMobileFontFamilyChange);
-  elements.mobileFontSizeDown.addEventListener("click", () => adjustFontSize(-1));
+  elements.fontWeightWheel.addEventListener("wheel", handleFontWeightWheel, {
+    passive: false,
+  });
+  elements.fontStyleWheel.addEventListener("wheel", handleFontStyleWheel, {
+    passive: false,
+  });
+  elements.fontFamilyWheel.addEventListener("wheel", handleFontFamilyWheel, {
+    passive: false,
+  });
+  elements.fontSizeWheel.addEventListener("wheel", handleFontSizeWheel, {
+    passive: false,
+  });
+  elements.mobileFontWeightSelect.addEventListener(
+    "change",
+    handleMobileFontWeightChange,
+  );
+  elements.mobileFontStyleSelect.addEventListener(
+    "change",
+    handleMobileFontStyleChange,
+  );
+  elements.mobileFontFamilySelect.addEventListener(
+    "change",
+    handleMobileFontFamilyChange,
+  );
+  elements.mobileFontSizeDown.addEventListener("click", () =>
+    adjustFontSize(-1),
+  );
   elements.mobileFontSizeUp.addEventListener("click", () => adjustFontSize(1));
 
   elements.deleteModal.addEventListener("click", (event) => {
@@ -236,8 +273,12 @@ function loadPreferences() {
   return {
     fontWeight: storedFontWeight === "bold" ? "bold" : "regular",
     fontStyle: storedFontStyle === "italic" ? "italic" : "roman",
-    fontFamily: isSupportedFontFamily(storedFontFamily) ? storedFontFamily : DEFAULT_FONT_FAMILY,
-    fontSize: clampFontSize(Number.isFinite(storedFontSize) ? storedFontSize : DEFAULT_FONT_SIZE),
+    fontFamily: isSupportedFontFamily(storedFontFamily)
+      ? storedFontFamily
+      : DEFAULT_FONT_FAMILY,
+    fontSize: clampFontSize(
+      Number.isFinite(storedFontSize) ? storedFontSize : DEFAULT_FONT_SIZE,
+    ),
     focusMode: storedFocusMode,
   };
 }
@@ -265,7 +306,11 @@ function normalizeEntries(value) {
 
 function normalizeEntry(entry) {
   if (!entry || typeof entry !== "object") return null;
-  if (typeof entry.id !== "string" || typeof entry.title !== "string" || typeof entry.content !== "string") {
+  if (
+    typeof entry.id !== "string" ||
+    typeof entry.title !== "string" ||
+    typeof entry.content !== "string"
+  ) {
     return null;
   }
 
@@ -314,7 +359,9 @@ function selectEntry(entryId) {
 }
 
 function getActiveEntry() {
-  return state.entries.find((entry) => entry.id === state.activeEntryId) || null;
+  return (
+    state.entries.find((entry) => entry.id === state.activeEntryId) || null
+  );
 }
 
 function handleEditorInput() {
@@ -336,7 +383,8 @@ function handleEditorBeforeInput(event) {
   if (!event.inputType.startsWith("insert")) return;
 
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return;
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed)
+    return;
 
   const range = selection.getRangeAt(0);
   if (!elements.contentInput.contains(range.commonAncestorContainer)) return;
@@ -414,38 +462,62 @@ function renderEntries() {
     return;
   }
 
-  elements.entriesList.innerHTML = entries
-    .map((entry) => {
-      const isActive = entry.id === state.activeEntryId;
-      return `
-        <article class="entry-card ${isActive ? "active" : ""} rounded-[24px] p-4">
-          <div class="flex items-start gap-3">
-            <button
-              type="button"
-              data-entry-id="${escapeHtml(entry.id)}"
-              class="min-w-0 flex-1 text-left"
-            >
-              <p class="text-[11px] font-semibold uppercase tracking-[0.26em] text-stone-400 dark:text-stone-500">Journal entry</p>
-              <h3 class="mt-2 truncate font-serif text-[1.55rem] font-semibold leading-none tracking-tight text-stone-900 dark:text-stone-100">${escapeHtml(getDisplayTitle(entry))}</h3>
-              <p class="entry-preview mt-2.5 text-sm leading-6 text-stone-600 dark:text-stone-400">${escapeHtml(getPreview(entry))}</p>
-              <p class="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400 dark:text-stone-500">${formatDate(entry.date)}</p>
-            </button>
-            <button
-              type="button"
-              data-delete-id="${escapeHtml(entry.id)}"
-              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-stone-400 transition hover:bg-stone-200/80 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
-              aria-label="Delete entry"
-            >
-              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <path d="M3 6h18"></path>
-                <path d="M8 6V4h8v2"></path>
-                <path d="m19 6-1 14H6L5 6"></path>
-              </svg>
-            </button>
-          </div>
-        </article>
-      `;
-    })
+  // Group entries by date bucket
+  const groups = [];
+  const seen = new Map();
+  for (const entry of entries) {
+    const label = getDateGroup(entry.date);
+    if (!seen.has(label)) {
+      seen.set(label, []);
+      groups.push({ label, items: seen.get(label) });
+    }
+    seen.get(label).push(entry);
+  }
+
+  elements.entriesList.innerHTML = groups
+    .map(
+      ({ label, items }) => `
+    <div class="entry-group">
+      <p class="entry-group-label">${escapeHtml(label)}</p>
+      ${items
+        .map((entry) => {
+          const isActive = entry.id === state.activeEntryId;
+          const wordCount = countWords(htmlToPlainText(entry.content));
+          return `
+          <article class="entry-card ${isActive ? "active" : ""} rounded-[24px] p-4 mb-3">
+            <div class="flex items-start gap-3">
+              <button
+                type="button"
+                data-entry-id="${escapeHtml(entry.id)}"
+                class="min-w-0 flex-1 text-left"
+              >
+                <h3 class="truncate font-serif text-[1.45rem] font-semibold leading-tight tracking-tight text-stone-900 dark:text-stone-100">${escapeHtml(getDisplayTitle(entry))}</h3>
+                <p class="entry-preview mt-2 text-sm leading-6 text-stone-500 dark:text-stone-400">${escapeHtml(getPreview(entry))}</p>
+                <div class="mt-3 flex items-center gap-3">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400 dark:text-stone-500">${formatDate(entry.date)}</p>
+                  ${wordCount > 0 ? `<span class="text-stone-300 dark:text-stone-700">·</span><p class="text-[11px] text-stone-400 dark:text-stone-500">${wordCount} words</p>` : ""}
+                </div>
+              </button>
+              <button
+                type="button"
+                data-delete-id="${escapeHtml(entry.id)}"
+                class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-stone-400 transition hover:bg-stone-200/80 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                aria-label="Delete entry"
+              >
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <path d="M3 6h18"></path>
+                  <path d="M8 6V4h8v2"></path>
+                  <path d="m19 6-1 14H6L5 6"></path>
+                </svg>
+              </button>
+            </div>
+          </article>
+        `;
+        })
+        .join("")}
+    </div>
+  `,
+    )
     .join("");
 }
 
@@ -457,7 +529,8 @@ function renderEditor(syncInputs = true) {
     elements.editorSection.classList.add("hidden");
     elements.editToolbar.classList.add("hidden");
     elements.deleteBtn.disabled = true;
-    elements.editorMeta.textContent = "No entries yet. Start writing your first thought.";
+    elements.editorMeta.textContent =
+      "No entries yet. Start writing your first thought.";
     elements.wordCount.textContent = "0 words";
     elements.charCount.textContent = "0 characters";
     elements.contentInput.innerHTML = "";
@@ -480,8 +553,11 @@ function renderEditor(syncInputs = true) {
 
 function updateEditorStats(htmlContent) {
   const plainText = htmlToPlainText(htmlContent);
-  elements.wordCount.textContent = `${countWords(plainText)} words`;
+  const words = countWords(plainText);
+  elements.wordCount.textContent = `${words} words`;
   elements.charCount.textContent = `${plainText.length} characters`;
+  const mins = Math.max(1, Math.round(words / 200));
+  elements.readingTime.textContent = `~${mins} min read`;
 }
 
 function exportAsPdf() {
@@ -568,21 +644,25 @@ function exportAsPdf() {
 }
 
 function handleMobileFontWeightChange(event) {
-  state.preferences.fontWeight = event.target.value === "bold" ? "bold" : "regular";
+  state.preferences.fontWeight =
+    event.target.value === "bold" ? "bold" : "regular";
   updateFormattingControlLabels();
   savePreferences();
   applyFormattingToSelection(true);
 }
 
 function handleMobileFontStyleChange(event) {
-  state.preferences.fontStyle = event.target.value === "italic" ? "italic" : "roman";
+  state.preferences.fontStyle =
+    event.target.value === "italic" ? "italic" : "roman";
   updateFormattingControlLabels();
   savePreferences();
   applyFormattingToSelection(true);
 }
 
 function handleMobileFontFamilyChange(event) {
-  state.preferences.fontFamily = isSupportedFontFamily(event.target.value) ? event.target.value : DEFAULT_FONT_FAMILY;
+  state.preferences.fontFamily = isSupportedFontFamily(event.target.value)
+    ? event.target.value
+    : DEFAULT_FONT_FAMILY;
   updateFormattingControlLabels();
   savePreferences();
   applyFormattingToSelection(true);
@@ -591,8 +671,12 @@ function handleMobileFontFamilyChange(event) {
 function handleFontFamilyWheel(event) {
   event.preventDefault();
   const direction = event.deltaY > 0 ? 1 : -1;
-  const currentIndex = FONT_FAMILY_SEQUENCE.indexOf(state.preferences.fontFamily);
-  const nextIndex = (currentIndex + direction + FONT_FAMILY_SEQUENCE.length) % FONT_FAMILY_SEQUENCE.length;
+  const currentIndex = FONT_FAMILY_SEQUENCE.indexOf(
+    state.preferences.fontFamily,
+  );
+  const nextIndex =
+    (currentIndex + direction + FONT_FAMILY_SEQUENCE.length) %
+    FONT_FAMILY_SEQUENCE.length;
   state.preferences.fontFamily = FONT_FAMILY_SEQUENCE[nextIndex];
   updateFormattingControlLabels();
   savePreferences();
@@ -601,7 +685,8 @@ function handleFontFamilyWheel(event) {
 
 function handleFontWeightWheel(event) {
   event.preventDefault();
-  state.preferences.fontWeight = state.preferences.fontWeight === "bold" ? "regular" : "bold";
+  state.preferences.fontWeight =
+    state.preferences.fontWeight === "bold" ? "regular" : "bold";
   updateFormattingControlLabels();
   savePreferences();
   applyFormattingToSelection(true);
@@ -609,7 +694,8 @@ function handleFontWeightWheel(event) {
 
 function handleFontStyleWheel(event) {
   event.preventDefault();
-  state.preferences.fontStyle = state.preferences.fontStyle === "italic" ? "roman" : "italic";
+  state.preferences.fontStyle =
+    state.preferences.fontStyle === "italic" ? "roman" : "italic";
   updateFormattingControlLabels();
   savePreferences();
   applyFormattingToSelection(true);
@@ -651,14 +737,18 @@ function applyFormattingToSelection(silent = false) {
   span.dataset.fontWeight = state.preferences.fontWeight;
   span.dataset.fontStyle = state.preferences.fontStyle;
   span.style.fontSize = `${state.preferences.fontSize}px`;
-  span.style.fontWeight = state.preferences.fontWeight === "bold" ? "700" : "500";
-  span.style.fontStyle = state.preferences.fontStyle === "italic" ? "italic" : "normal";
+  span.style.fontWeight =
+    state.preferences.fontWeight === "bold" ? "700" : "500";
+  span.style.fontStyle =
+    state.preferences.fontStyle === "italic" ? "italic" : "normal";
   span.appendChild(range.extractContents());
   range.insertNode(span);
   mergeAdjacentStyledSpans(elements.contentInput);
   reselectNodeContents(span);
   handleEditorInput();
-  setStatus(`Applied ${getFontStyleLabel(state.preferences.fontStyle)} ${state.preferences.fontWeight === "bold" ? "Bold" : "Regular"} ${getFontFamilyLabel(state.preferences.fontFamily)} ${state.preferences.fontSize}px`);
+  setStatus(
+    `Applied ${getFontStyleLabel(state.preferences.fontStyle)} ${state.preferences.fontWeight === "bold" ? "Bold" : "Regular"} ${getFontFamilyLabel(state.preferences.fontFamily)} ${state.preferences.fontSize}px`,
+  );
   return true;
 }
 
@@ -683,8 +773,10 @@ function ensureTypingStyleAtCaret(range) {
   span.dataset.fontWeight = state.preferences.fontWeight;
   span.dataset.fontStyle = state.preferences.fontStyle;
   span.style.fontSize = fontSize;
-  span.style.fontWeight = state.preferences.fontWeight === "bold" ? "700" : "500";
-  span.style.fontStyle = state.preferences.fontStyle === "italic" ? "italic" : "normal";
+  span.style.fontWeight =
+    state.preferences.fontWeight === "bold" ? "700" : "500";
+  span.style.fontStyle =
+    state.preferences.fontStyle === "italic" ? "italic" : "normal";
   span.appendChild(marker);
   range.insertNode(span);
 
@@ -759,7 +851,11 @@ function getClosestStyledSpan(node) {
   let current = node.nodeType === Node.ELEMENT_NODE ? node : node.parentNode;
 
   while (current && current !== elements.contentInput) {
-    if (current.nodeType === Node.ELEMENT_NODE && current.tagName === "SPAN" && current.dataset.fontFamily) {
+    if (
+      current.nodeType === Node.ELEMENT_NODE &&
+      current.tagName === "SPAN" &&
+      current.dataset.fontFamily
+    ) {
       return current;
     }
 
@@ -770,9 +866,13 @@ function getClosestStyledSpan(node) {
 }
 
 function updateFormattingControlLabels() {
-  elements.fontWeightValue.textContent = state.preferences.fontWeight === "bold" ? "Bold" : "Regular";
-  elements.fontStyleValue.textContent = state.preferences.fontStyle === "italic" ? "Italic" : "Roman";
-  elements.fontFamilyValue.textContent = getFontFamilyLabel(state.preferences.fontFamily);
+  elements.fontWeightValue.textContent =
+    state.preferences.fontWeight === "bold" ? "Bold" : "Regular";
+  elements.fontStyleValue.textContent =
+    state.preferences.fontStyle === "italic" ? "Italic" : "Roman";
+  elements.fontFamilyValue.textContent = getFontFamilyLabel(
+    state.preferences.fontFamily,
+  );
   elements.fontSizeValue.textContent = `${state.preferences.fontSize}px`;
   elements.mobileFontWeightSelect.value = state.preferences.fontWeight;
   elements.mobileFontStyleSelect.value = state.preferences.fontStyle;
@@ -822,7 +922,9 @@ function applyTheme(theme) {
 }
 
 function inferDefaultTheme() {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function openSidebar() {
@@ -871,7 +973,8 @@ function handleViewportChange() {
 }
 
 function updateSearchPlaceholder() {
-  elements.searchInput.placeholder = window.innerWidth <= 640 ? "Search" : "Search title or content";
+  elements.searchInput.placeholder =
+    window.innerWidth <= 640 ? "Search" : "Search title or content";
 }
 
 function openDeleteModal() {
@@ -998,6 +1101,184 @@ function moonIcon() {
       <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
     </svg>
   `;
+}
+
+// ─── Import ──────────────────────────────────────────────────────────────────
+
+function handleImportFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  // Reset so the same file can be re-selected
+  elements.importFileInput.value = "";
+
+  if (file.name.endsWith(".pdf") || file.type === "application/pdf") {
+    importFromPdf(file);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target?.result;
+    if (typeof text !== "string") {
+      setStatus("Could not read file");
+      return;
+    }
+
+    if (file.name.endsWith(".json")) {
+      importFromJson(text);
+    } else {
+      importFromText(text, file.name);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function importFromPdf(file) {
+  setStatus("Reading PDF…");
+
+  // Dynamically load pdf.js from CDN
+  const existingScript = document.getElementById("pdfjs-script");
+  const workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const libSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+
+  function runExtraction() {
+    const pdfjsLib = window["pdfjs-dist/build/pdf"];
+    if (!pdfjsLib) {
+      setStatus("PDF library failed to load");
+      return;
+    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const typedArray = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+        let fullText = "";
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((item) => item.str).join(" ");
+          fullText += pageText + "\n\n";
+        }
+
+        const title = file.name
+          .replace(/\.pdf$/i, "")
+          .replace(/[-_]+/g, " ")
+          .trim();
+        const timestamp = Date.now();
+        const entry = {
+          id: String(timestamp),
+          title,
+          content: plainTextToHtml(fullText.trim()),
+          date: timestamp,
+        };
+
+        state.entries.unshift(entry);
+        state.activeEntryId = entry.id;
+        saveEntries();
+        setStatus(`Imported PDF: "${title}"`);
+        refreshUI();
+      } catch (err) {
+        console.error("PDF extraction error:", err);
+        setStatus("Could not read PDF");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  if (existingScript) {
+    runExtraction();
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.id = "pdfjs-script";
+  script.src = libSrc;
+  script.onload = runExtraction;
+  script.onerror = () => setStatus("Could not load PDF library");
+  document.head.appendChild(script);
+}
+
+function importFromJson(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    setStatus("Invalid JSON file");
+    return;
+  }
+
+  const incoming = normalizeEntries(Array.isArray(parsed) ? parsed : []);
+  if (!incoming.length) {
+    setStatus("No valid entries found in file");
+    return;
+  }
+
+  const existingIds = new Set(state.entries.map((e) => e.id));
+  const fresh = incoming.filter((e) => !existingIds.has(e.id));
+
+  if (!fresh.length) {
+    setStatus("All entries already exist");
+    return;
+  }
+
+  state.entries.push(...fresh);
+  sortEntries();
+  state.activeEntryId = fresh[0].id;
+  saveEntries();
+  setStatus(
+    `Imported ${fresh.length} ${fresh.length === 1 ? "entry" : "entries"}`,
+  );
+  refreshUI();
+}
+
+function importFromText(text, filename) {
+  const timestamp = Date.now();
+  // Derive a title from the filename (strip extension)
+  const title = filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+
+  const entry = {
+    id: String(timestamp),
+    title,
+    content: plainTextToHtml(text),
+    date: timestamp,
+  };
+
+  state.entries.unshift(entry);
+  state.activeEntryId = entry.id;
+  saveEntries();
+  setStatus(`Imported "${title}"`);
+  refreshUI();
+}
+
+// ─── Date grouping helpers ────────────────────────────────────────────────────
+
+function getDateGroup(timestamp) {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  const startOfWeek =
+    startOfToday - (now.getDay() === 0 ? 6 : now.getDay() - 1) * 86400000;
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+  if (timestamp >= startOfToday) return "Today";
+  if (timestamp >= startOfWeek) return "This week";
+  if (timestamp >= startOfMonth) return "This month";
+  if (timestamp >= startOfYear) return "This year";
+  return date.getFullYear().toString();
 }
 
 initializeApp();
